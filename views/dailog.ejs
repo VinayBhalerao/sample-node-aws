@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+        <title>Node Authentication</title>
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
+        <style>
+                body            { padding-top:80px; }
+        </style>
+</head>
+<body>
+<div class="container">
+
+        <div class="jumbotron text-center">
+
+                <form action="http://184.72.169.82/callback" method="GET">
+                        <input type="hidden" name="state" value=<%= state %> />
+                                <p> Do you wish to grant access to the application? </p>
+				<% if (state.length > 0) { %>
+		                <div class="alert alert-danger"><%= state %></div>
+       				 <% } %>
+				<div>
+
+                        <input type="submit" value="Allow" id="allow">
+                        <input type="submit" value="Deny" name="cancel" id="deny">
+                </div>
+
+                </form>
+        </div>
+
+</div>
+</body>
+</html
