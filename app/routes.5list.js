@@ -8,6 +8,13 @@ module.exports = function(app, passport) {
                 res.render('index.ejs');
         });
 
+        // PROFILE SECTION =========================
+        app.get('/profile', isLoggedIn, function(req, res) {
+                res.render('profile.ejs', {
+                        user : req.user
+                });
+        });
+
 
         // DAILOG SECTION =========================
         app.get('/dailog', isLoggedIn, function(req, res) {
@@ -34,45 +41,72 @@ module.exports = function(app, passport) {
 // =============================================================================
 // AUTHENTICATE (FIRST LOGIN) ==================================================
 // =============================================================================
-
                 // show the login form
+
 app.get('/login', function(req, res) {
-global.state = req.query.state;
-global.scope = req.query.scope;
+
     request('https://acme-admin.3scale.net/admin/api/application_plans.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
         if (!error && response.statusCode == 200) {
             var parsedResponse = JSON.parse(body);
-            var parsedObject = getObjects(parsedResponse, 'name', global.scope);
- 	    if(parsedObject.length == 0){
-	      res.render('invalidscope.ejs', {
-        	invalidscope: req.query.scope
-    		});		
-	    } else {
+            var parsedObject = getObjects(parsedResponse, 'name', 'read');
+	    console.log(parsedObject);
             var application_id = getValues(parsedObject, 'id');
-
-        request('https://acme-admin.3scale.net/admin/api/application_plans/'+application_id+'/features.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
-          if (!error && response.statusCode == 200) {
-            var parsedResponse_features = JSON.parse(body);
-	    console.log(parsedResponse_features);
-            var parsedObject = getObjects(parsedResponse_features, 'id', '');
-            var description = getValues(parsedObject, 'name');
-
-            global.description = description;
-
         }
 
+
+        request('https://acme-admin.3scale.net/admin/api/applications/find.json?provider_key=9062f7afd5a594f2e9882c34206eea67&application_id=' + application_id + '&app_id=0dd367de', function(error, response, body) {
+
+            var parsedResponse_1 = JSON.parse(body);
+            var service_id = getValues(parsedResponse_1, 'service_id');
+            console.log(parsedResponse_1);
+            request('https://acme-admin.3scale.net/admin/api/services/' + service_id + '/metrics.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
+
+                var parsedResponse_metric = JSON.parse(body);
+                var parsedObject_metric = getObjects(parsedResponse_metric, 'name', 'hits');
+                var metrics_id = getValues(parsedObject_metric, 'id');
+	        console.log(parsedObject_metric);
+                console.log(metrics_id);
+
+                request('https://acme-admin.3scale.net/admin/api/application_plans/' + application_id + '/limits.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
+
+                    var parsedResponse_limits = JSON.parse(body);
+                    var parsedObjects_limit = getObjects(parsedResponse_limits, 'value', '');
+                    //var limit_id = getValues(parsedObject_limit, 'id');
+                    //console.log(limit_id);
+    		    //console.log(parsedObjects_limit);
+		    var inactive_method_ids= [];
+		    for( var i=0, l=parsedObjects_limit.length; i<l; i++ ) {
+    			console.log( parsedObjects_limit[i] );
+		        if(parsedObjects_limit[i].value == "0") {
+			    inactive_method_ids.push(parsedObjects_limit[i].metric_id);
+			}	
+		    }
+		    console.log(inactive_method_ids);
+
+                    request('https://acme-admin.3scale.net/admin/api/services/' + metrics_id + '/metrics/2555417829552/methods.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
+
+                        var parsedResponse_methods = JSON.parse(body);
+                        var method_id = getObjects(parsedResponse_methods, 'name', '');
+                        //console.log(method_id);
+
+                    })
+
+                })
+
+            })
+
         })
-	
+
+
+
+
+    })
     res.render('login.ejs', {
         message: req.flash('loginMessage'),
         state: req.query.state
     });
-    }
-   }
- })
 });
-
-                // process the login form
+		// process the login form
                 app.post('/login', passport.authenticate('local-login', {
                         successRedirect : '/dailog', // redirect to the secure profile section
                         failureRedirect : '/login', // redirect back to the signup page if there is an error
@@ -103,8 +137,15 @@ global.scope = req.query.scope;
                 }));
 
 
-        //unlink account
-	app.get('/unlink/local', isLoggedIn, function(req, res) {
+// =============================================================================
+// UNLINK ACCOUNTS =============================================================
+// =============================================================================
+// used to unlink accounts. for social accounts, just remove the token
+// for local account, remove email and password
+// user account will stay active in case they want to reconnect in the future
+
+        // local -----------------------------------
+        app.get('/unlink/local', isLoggedIn, function(req, res) {
                 var user            = req.user;
                 user.local.email    = undefined;
                 user.local.password = undefined;
@@ -125,7 +166,7 @@ function isLoggedIn(req, res, next) {
         res.redirect('/');
 }
 
-// to get the objectkeys and objects values
+//return an array of objects according to key, value, or key and value matching
 function getObjects(obj, key, val) {
     var objects = [];
     for (var i in obj) {

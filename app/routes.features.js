@@ -8,6 +8,13 @@ module.exports = function(app, passport) {
                 res.render('index.ejs');
         });
 
+        // PROFILE SECTION =========================
+        app.get('/profile', isLoggedIn, function(req, res) {
+                res.render('profile.ejs', {
+                        user : req.user
+                });
+        });
+
 
         // DAILOG SECTION =========================
         app.get('/dailog', isLoggedIn, function(req, res) {
@@ -35,42 +42,46 @@ module.exports = function(app, passport) {
 // AUTHENTICATE (FIRST LOGIN) ==================================================
 // =============================================================================
 
+        // locally --------------------------------
+                // LOGIN ===============================
                 // show the login form
-app.get('/login', function(req, res) {
-global.state = req.query.state;
-global.scope = req.query.scope;
-    request('https://acme-admin.3scale.net/admin/api/application_plans.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
-        if (!error && response.statusCode == 200) {
-            var parsedResponse = JSON.parse(body);
-            var parsedObject = getObjects(parsedResponse, 'name', global.scope);
- 	    if(parsedObject.length == 0){
-	      res.render('invalidscope.ejs', {
-        	invalidscope: req.query.scope
-    		});		
-	    } else {
-            var application_id = getValues(parsedObject, 'id');
+                    app.get('/login', function(req, res) {
+                    global.state = req.query.state;
+                    global.scope = req.query.scope;
 
-        request('https://acme-admin.3scale.net/admin/api/application_plans/'+application_id+'/features.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
-          if (!error && response.statusCode == 200) {
-            var parsedResponse_features = JSON.parse(body);
-	    console.log(parsedResponse_features);
-            var parsedObject = getObjects(parsedResponse_features, 'id', '');
-            var description = getValues(parsedObject, 'name');
+                    request('https://acme-admin.3scale.net/admin/api/application_plans.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
+                        if (!error && response.statusCode == 200) {
+                            var parsedResponse = JSON.parse(body);
+                            if (parsedResponse.plans[2].application_plan.name == global.scope) {
+                                var application_id = parsedResponse.plans[2].application_plan.id;
+	                        console.log(application_id);
 
-            global.description = description;
+                                request('https://acme-admin.3scale.net/admin/api/application_plans/2357355807483/features.json?provider_key=9062f7afd5a594f2e9882c34206eea67', function(error, response, body) {
+                                    if (!error && response.statusCode == 200) {
+                                        var parsedResponse = JSON.parse(body);
+                                        if (parsedResponse.features[0].feature.system_name == global.scope) {
+                                            var scope = parsedResponse.features[0].feature.system_name;
+                                            var description = parsedResponse.features[0].feature.name;
+					    console.log(description);
+                                            global.scope = scope;
+                                            global.description = description;
 
-        }
 
-        })
-	
-    res.render('login.ejs', {
-        message: req.flash('loginMessage'),
-        state: req.query.state
-    });
-    }
-   }
- })
-});
+                                        }
+                                    }
+
+                                })
+
+                            }
+                        }
+                    })
+
+
+                    res.render('login.ejs', {
+                        message: req.flash('loginMessage'),
+                        state: req.query.state
+                    });
+                });
 
                 // process the login form
                 app.post('/login', passport.authenticate('local-login', {
@@ -103,8 +114,15 @@ global.scope = req.query.scope;
                 }));
 
 
-        //unlink account
-	app.get('/unlink/local', isLoggedIn, function(req, res) {
+// =============================================================================
+// UNLINK ACCOUNTS =============================================================
+// =============================================================================
+// used to unlink accounts. for social accounts, just remove the token
+// for local account, remove email and password
+// user account will stay active in case they want to reconnect in the future
+
+        // local -----------------------------------
+        app.get('/unlink/local', isLoggedIn, function(req, res) {
                 var user            = req.user;
                 user.local.email    = undefined;
                 user.local.password = undefined;
@@ -125,7 +143,7 @@ function isLoggedIn(req, res, next) {
         res.redirect('/');
 }
 
-// to get the objectkeys and objects values
+
 function getObjects(obj, key, val) {
     var objects = [];
     for (var i in obj) {

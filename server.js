@@ -8,6 +8,7 @@ var port     = process.env.PORT || 8081;
 var mongoose = require('mongoose');
 var passport = require('passport');
 var flash    = require('connect-flash');
+var request = require('request');
 
 var configDB = require('./config/database.js');
 
@@ -26,7 +27,7 @@ app.configure(function() {
 	app.set('view engine', 'ejs'); // set up ejs for templating
 
 	// required for passport
-	app.use(express.session({ secret: 'ilovescotchscotchyscotchscotch' })); // session secret
+	app.use(express.session({ secret: '3scaledemo' })); // session secret
 	app.use(passport.initialize());
 	app.use(passport.session()); // persistent login sessions
 	app.use(flash()); // use connect-flash for flash messages stored in session
