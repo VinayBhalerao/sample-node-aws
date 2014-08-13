@@ -31,9 +31,7 @@ module.exports = function(app, passport) {
                 var authorize_endpoint = req.body.authorize_endpoint;
                 var token_endpoint = req.body.token_endpoint;
         });
-// =============================================================================
-// AUTHENTICATE (FIRST LOGIN) ==================================================
-// =============================================================================
+//Authentication
 
                 // show the login form
 app.get('/login', function(req, res) {
